@@ -81,9 +81,43 @@ const boardSchema = new mongoose.Schema(
   }
 );
 
+// user model
+
+const userSchema = new mongoose.Schema(
+  {
+    username: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: true,
+      minlength: 8,
+    },
+    avatar: {
+      type: String,
+    },
+    boardId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
 // Models
 const Task = mongoose.model("Task", taskSchema);
 const Board = mongoose.model("Board", boardSchema);
 const Column = mongoose.model("Column", columnSchema);
+const User = mongoose.model("User", userSchema);
 
-module.exports = { Board, Column, Task };
+module.exports = { Board, Column, Task, User };

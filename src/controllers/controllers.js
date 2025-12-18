@@ -1,5 +1,57 @@
-const { Column, Board, Task } = require("../models/models");
+const { Column, Board, Task, User } = require("../models/models");
 const { v4: uuidv4 } = require("uuid");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+const addBoard = async (boardName = "Initial Board", userId = null) => {
+  try {
+    const newBoard = new Board({
+      $id: uuidv4(),
+      $createdAt: new Date().toISOString(),
+      boardName,
+      columns: [],
+      userId: userId, // Optional: associate board with user
+    });
+
+    await newBoard.save();
+    return { success: true, board: newBoard };
+  } catch (error) {
+    console.error("Error creating board:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Controller for creating board via API
+const createBoard = async (req, res) => {
+  try {
+    let { boardName } = req.body;
+
+    // Default board name if not provided
+    if (!boardName) {
+      boardName = "Initial Board";
+    }
+
+    const result = await addBoard(boardName);
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error,
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Board created successfully",
+      data: result.board,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 // Get all tasks from database
 const getTasks = async (req, res) => {
@@ -26,7 +78,10 @@ const getTasks = async (req, res) => {
 
 const getBoardColumns = async (req, res) => {
   try {
-    const columns = await Column.find();
+    const { boardId } = req.params;
+    // console.log("boardId", boardId);
+    // return;
+    const columns = await Column.find({ boardId });
     // const allTodos = [];
 
     // columns.forEach((column) => {
@@ -740,39 +795,233 @@ const deleteTask = async (req, res) => {
   }
 };
 
-const createBoard = async (req, res) => {
-  try {
-    const { boardName } = req.body;
-    console.log({ boardName });
+// async function register(req, res) {
+//   // let userId = req.user._id;
+//   let { username, email, password } = req.body;
+//   // console.log("upcoming data", username, email, password);
+//   // return;
 
-    if (!boardName) {
-      return res.status(400).json({
+//   if (!username || !email || !password) {
+//     res.status(400).json({
+//       success: false,
+//       message: "Either one or more required fields are missing...",
+//     });
+//     return;
+//   }
+
+//   try {
+//     let existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       res.status(409).json({
+//         success: false,
+//         message: "Email already exists...",
+//       });
+//       return;
+//     }
+
+//     // here we will add one board and then add board id to newUser
+
+//     let hashedPassword = await bcrypt.hash(password, 10); // check once more
+//     let newUser = new User({
+//       username,
+//       email,
+//       password: hashedPassword,
+//       boardId: "",
+//     });
+//     console.log("after", newUser);
+
+//     await newUser.save();
+
+//     newUser = newUser.toObject();
+//     // let token = jwt.sign(newUser, process.env.SECRET_KEY)
+//     // newUser.token = token;
+
+//     delete newUser.password;
+//     res.status(200).json(newUser);
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong while registering new User",
+//     });
+//   }
+// }
+
+// const createBoard = async (req, res) => {
+//   try {
+//     const { boardName } = req.body;
+//     console.log({ boardName });
+
+//     if (!boardName) boardName = "Initial Board";
+
+//     if (!boardName) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Board name is required",
+//       });
+//     }
+
+//     const newBoard = new Board({
+//       $id: uuidv4(),
+//       $createdAt: new Date().toISOString(),
+//       boardName,
+//       columns: [],
+//     });
+
+//     await newBoard.save();
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Board created successfully",
+//       data: newBoard,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
+// aut controllers
+
+async function register(req, res) {
+  let { username, email, password } = req.body;
+
+  // console.log("inside register");
+  // return;
+
+  if (!username || !email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Either one or more required fields are missing...",
+    });
+  }
+
+  try {
+    let existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({
         success: false,
-        message: "Board name is required",
+        message: "Email already exists...",
       });
     }
 
-    const newBoard = new Board({
-      $id: uuidv4(),
-      $createdAt: new Date().toISOString(),
-      boardName,
-      columns: [],
+    let hashedPassword = await bcrypt.hash(password, 10);
+
+    const boardResult = await addBoard("My First Board");
+    if (!boardResult.success) {
+      console.log(err);
+      res.status(500).json({
+        success: false,
+        message: "Something went wrong while adding new board",
+      });
+    }
+    console.log("boardId,,", boardResult.board._id);
+
+    // Create a new user first
+    let newUser = new User({
+      username,
+      email,
+      password: hashedPassword,
+      boardId: boardResult.board._id, // Will be updated after board creation
     });
 
-    await newBoard.save();
+    await newUser.save();
+    console.log("after..");
 
-    res.status(201).json({
+    // Create a board for the new user
+
+    if (boardResult.success) {
+      // Update user with the board ID
+      newUser.boardId = boardResult.board._id;
+      await newUser.save();
+    } else {
+      console.error("Failed to create board for user:", boardResult.error);
+      // Optionally: rollback user creation or handle error
+    }
+
+    // Prepare response
+    newUser = newUser.toObject();
+    delete newUser.password;
+
+    res.status(200).json({
       success: true,
-      message: "Board created successfully",
-      data: newBoard,
+      message: "User registered successfully",
+      user: newUser,
+      board: boardResult.success ? boardResult.board : null,
     });
-  } catch (error) {
+  } catch (err) {
+    console.log(err);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Something went wrong while registering new User",
     });
   }
-};
+}
+
+async function login(req, res) {
+  let { email, password } = req.body;
+  console.log("Inside login", email, password);
+
+  if (!email || !password) {
+    res.status(400).json({
+      success: false,
+      message: "Email and password both required...",
+    });
+    return;
+  }
+  try {
+    // finding saved user by email
+    // res.send("finding the user with email"); return ;
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        message: "User with email or password not found...",
+      });
+      return;
+    }
+
+    // check password is correct or not
+    let isValidPassword = await bcrypt.compare(password, user.password); // check one more
+    if (!isValidPassword) {
+      res.status(401).json({
+        success: false,
+        message: "Invalid email or password...",
+      });
+      return;
+    }
+    // console.log("validPassword", isValidPassword);
+    // console.log("after user", user);
+
+    // generate token
+    console.log("before token");
+    console.log(process.env.SECRET_KEY);
+    let token = jwt.sign(
+      {
+        user,
+      },
+      process.env.SECRET_KEY
+    );
+    console.log("after token", token);
+
+    user = user.toObject();
+    delete user.password;
+    user.token = token;
+    console.log("after user with token", user);
+
+    // return token
+    res.status(200).json(user);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server error",
+    });
+  }
+}
 
 module.exports = {
   getTasks,
@@ -784,4 +1033,6 @@ module.exports = {
   moveTask,
   deleteTask,
   createBoard,
+  register,
+  login,
 };
