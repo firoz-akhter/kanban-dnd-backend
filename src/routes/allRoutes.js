@@ -7,6 +7,7 @@ const {
   deleteColumn,
   createTask,
   updateTask,
+  moveTask,
   deleteTask,
   createBoard,
 } = require("../controllers/controllers"); // Adjust path as needed
@@ -18,6 +19,7 @@ router.post("/createTask/:columnId", createTask);
 router.get("/getTasks", getTasks);
 router.get("/getBoardColumns", getBoardColumns);
 router.patch("/updateTask/:taskId/:columnId", updateTask);
+router.patch("/moveTask/:taskId/:oldColumnId/:newColumnId/:position", moveTask);
 router.delete("/deleteTask/:taskId/:columnId", deleteTask);
 router.get("/testing", (req, res) =>
   res.json({ message: "Testing in postman" })

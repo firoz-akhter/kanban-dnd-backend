@@ -356,6 +356,349 @@ const updateTask = async (req, res) => {
   }
 };
 
+// const moveTask = async (req, res) => {
+//   try {
+//     const { taskId, oldColumnId, newColumnId, position } = req.params;
+
+//     // Validate if moving to same column
+//     if (oldColumnId === newColumnId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Task is already in this column",
+//       });
+//     }
+
+//     // Find the task in Task collection
+//     const task = await Task.findById(taskId);
+
+//     if (!task) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Task not found",
+//       });
+//     }
+
+//     // Find the old column
+//     const oldColumn = await Column.findById(oldColumnId);
+
+//     if (!oldColumn) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Old column not found",
+//       });
+//     }
+
+//     // Find the new column
+//     const newColumn = await Column.findById(newColumnId);
+
+//     if (!newColumn) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "New column not found",
+//       });
+//     }
+
+//     // Find task index in old column
+//     const taskIndex = oldColumn.todos.findIndex(
+//       (t) => t._id.toString() === taskId
+//     );
+
+//     if (taskIndex === -1) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Task not found in old column",
+//       });
+//     }
+
+//     // Remove task from old column
+//     oldColumn.todos.splice(taskIndex, 1);
+//     await oldColumn.save();
+
+//     // Update task's columnId and columnName in Task model
+//     task.columnId = newColumnId;
+//     task.columnName = newColumn.columnName;
+//     task.status = newColumn.columnName; // Update status to match new column
+//     await task.save();
+
+//     // Add task to new column
+//     newColumn.todos.push({
+//       $id: task.$id,
+//       $createdAt: task.$createdAt,
+//       _id: task._id,
+//       title: task.title,
+//       status: newColumn.columnName,
+//       description: task.description,
+//       priority: task.priority,
+//       dueDate: task.dueDate,
+//       columnName: newColumn.columnName,
+//       columnId: newColumnId,
+//     });
+//     await newColumn.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Task moved successfully",
+//       data: {
+//         task,
+//         oldColumn: oldColumn.columnName,
+//         newColumn: newColumn.columnName,
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
+const moveTask = async (req, res) => {
+  try {
+    const { taskId, oldColumnId, newColumnId, position } = req.params;
+
+    // Validate if moving to same column
+    if (oldColumnId === newColumnId) {
+      return res.status(400).json({
+        success: false,
+        message: "Task is already in this column",
+      });
+    }
+
+    // Find the task in Task collection
+    const task = await Task.findById(taskId);
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found",
+      });
+    }
+
+    // Find the old column
+    const oldColumn = await Column.findById(oldColumnId);
+
+    if (!oldColumn) {
+      return res.status(404).json({
+        success: false,
+        message: "Old column not found",
+      });
+    }
+
+    // Find the new column
+    const newColumn = await Column.findById(newColumnId);
+
+    if (!newColumn) {
+      return res.status(404).json({
+        success: false,
+        message: "New column not found",
+      });
+    }
+
+    // Find task index in old column
+    const taskIndex = oldColumn.todos.findIndex(
+      (t) => t._id.toString() === taskId
+    );
+
+    if (taskIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found in old column",
+      });
+    }
+
+    // Remove task from old column
+    oldColumn.todos.splice(taskIndex, 1);
+    await oldColumn.save();
+
+    // Update task's columnId and columnName in Task model
+    task.columnId = newColumnId;
+    task.columnName = newColumn.columnName;
+    task.status = newColumn.columnName; // Update status to match new column
+    await task.save();
+
+    // Prepare task object to insert
+    const taskToInsert = {
+      $id: task.$id,
+      $createdAt: task.$createdAt,
+      _id: task._id,
+      title: task.title,
+      status: newColumn.columnName,
+      description: task.description,
+      priority: task.priority,
+      dueDate: task.dueDate,
+      columnName: newColumn.columnName,
+      columnId: newColumnId,
+    };
+
+    // Parse position and handle edge cases
+    const insertPosition = parseInt(position);
+    console.log("insertPosition", insertPosition);
+
+    if (insertPosition === -1 || insertPosition >= newColumn.todos.length) {
+      // If position is -1 or greater than array length, add to end
+      newColumn.todos.push(taskToInsert);
+    } else if (insertPosition <= 0) {
+      // If position is 0 or negative, add to beginning
+      newColumn.todos.unshift(taskToInsert);
+    } else {
+      // Insert at specific position
+      newColumn.todos.splice(insertPosition, 0, taskToInsert);
+    }
+
+    await newColumn.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Task moved successfully",
+      data: {
+        task,
+        oldColumn: oldColumn.columnName,
+        newColumn: newColumn.columnName,
+        position: insertPosition,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// const moveTask = async (req, res) => {
+//   try {
+//     const { taskId, oldColumnId, newColumnId, position } = req.params;
+
+//     // Find the task in Task collection
+//     const task = await Task.findById(taskId);
+
+//     if (!task) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Task not found",
+//       });
+//     }
+
+//     // Find the old column
+//     const oldColumn = await Column.findById(oldColumnId);
+
+//     if (!oldColumn) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Old column not found",
+//       });
+//     }
+
+//     // Find task index in old column
+//     const taskIndex = oldColumn.todos.findIndex(
+//       (t) => t._id.toString() === taskId
+//     );
+
+//     if (taskIndex === -1) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Task not found in old column",
+//       });
+//     }
+
+//     // Parse position
+//     const insertPosition = parseInt(position);
+//     console.log("insertPosition", insertPosition);
+
+//     // Handle same column reordering
+//     if (oldColumnId === newColumnId) {
+//       // Remove task from current position
+//       const [movedTask] = oldColumn.todos.splice(taskIndex, 1);
+
+//       // Insert at new position
+//       if (insertPosition === -1 || insertPosition >= oldColumn.todos.length) {
+//         // Add to end
+//         oldColumn.todos.push(movedTask);
+//       } else if (insertPosition <= 0) {
+//         // Add to beginning
+//         oldColumn.todos.unshift(movedTask);
+//       } else {
+//         // Insert at specific position
+//         oldColumn.todos.splice(insertPosition, 0, movedTask);
+//       }
+
+//       await oldColumn.save();
+
+//       return res.status(200).json({
+//         success: true,
+//         message: "Task reordered successfully",
+//         data: {
+//           task,
+//           column: oldColumn.columnName,
+//           oldPosition: taskIndex,
+//           newPosition: insertPosition,
+//         },
+//       });
+//     }
+
+//     // Handle moving to different column
+//     const newColumn = await Column.findById(newColumnId);
+
+//     if (!newColumn) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "New column not found",
+//       });
+//     }
+
+//     // Remove task from old column
+//     oldColumn.todos.splice(taskIndex, 1);
+//     await oldColumn.save();
+
+//     // Update task's columnId and columnName in Task model
+//     task.columnId = newColumnId;
+//     task.columnName = newColumn.columnName;
+//     task.status = newColumn.columnName;
+//     await task.save();
+
+//     // Prepare task object to insert
+//     const taskToInsert = {
+//       $id: task.$id,
+//       $createdAt: task.$createdAt,
+//       _id: task._id,
+//       title: task.title,
+//       status: newColumn.columnName,
+//       description: task.description,
+//       priority: task.priority,
+//       dueDate: task.dueDate,
+//       columnName: newColumn.columnName,
+//       columnId: newColumnId,
+//     };
+
+//     // Insert at position in new column
+//     if (insertPosition === -1 || insertPosition >= newColumn.todos.length) {
+//       newColumn.todos.push(taskToInsert);
+//     } else if (insertPosition <= 0) {
+//       newColumn.todos.unshift(taskToInsert);
+//     } else {
+//       newColumn.todos.splice(insertPosition, 0, taskToInsert);
+//     }
+
+//     await newColumn.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Task moved successfully",
+//       data: {
+//         task,
+//         oldColumn: oldColumn.columnName,
+//         newColumn: newColumn.columnName,
+//         position: insertPosition,
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
 const deleteTask = async (req, res) => {
   try {
     const { columnId, taskId } = req.params;
@@ -437,6 +780,7 @@ module.exports = {
   deleteColumn,
   createTask,
   updateTask,
+  moveTask,
   deleteTask,
   createBoard,
 };
