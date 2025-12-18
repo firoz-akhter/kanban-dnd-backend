@@ -700,6 +700,7 @@ const moveTask = async (req, res) => {
 // };
 
 const deleteTask = async (req, res) => {
+  console.log("testing branch switch ");
   try {
     const { columnId, taskId } = req.params;
 
