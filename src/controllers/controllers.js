@@ -587,7 +587,7 @@ const moveTask = async (req, res) => {
 
     // Parse position and handle edge cases
     const insertPosition = parseInt(position);
-    console.log("insertPosition", insertPosition);
+    // console.log("insertPosition", insertPosition);
 
     if (insertPosition === -1 || insertPosition >= newColumn.todos.length) {
       // If position is -1 or greater than array length, add to end
@@ -755,7 +755,7 @@ const moveTask = async (req, res) => {
 // };
 
 const deleteTask = async (req, res) => {
-  console.log("testing branch switch ");
+  // console.log("testing branch switch ");
   try {
     const { columnId, taskId } = req.params;
 
@@ -917,7 +917,7 @@ async function register(req, res) {
         message: "Something went wrong while adding new board",
       });
     }
-    console.log("boardId,,", boardResult.board._id);
+    // console.log("boardId,,", boardResult.board._id);
 
     // Create a new user first
     let newUser = new User({
@@ -928,7 +928,6 @@ async function register(req, res) {
     });
 
     await newUser.save();
-    console.log("after..");
 
     // Create a board for the new user
 
@@ -962,7 +961,6 @@ async function register(req, res) {
 
 async function login(req, res) {
   let { email, password } = req.body;
-  console.log("Inside login", email, password);
 
   if (!email || !password) {
     res.status(400).json({
@@ -997,20 +995,16 @@ async function login(req, res) {
     // console.log("after user", user);
 
     // generate token
-    console.log("before token");
-    console.log(process.env.SECRET_KEY);
     let token = jwt.sign(
       {
         user,
       },
       process.env.SECRET_KEY
     );
-    console.log("after token", token);
 
     user = user.toObject();
     delete user.password;
     user.token = token;
-    console.log("after user with token", user);
 
     // return token
     res.status(200).json(user);
